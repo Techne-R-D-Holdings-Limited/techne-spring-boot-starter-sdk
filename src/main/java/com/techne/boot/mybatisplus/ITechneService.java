@@ -1,0 +1,362 @@
+package com.techne.boot.mybatisplus;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
+import com.techne.boot.pojo.basic.BasicPage;
+import com.techne.boot.pojo.basic.TechnePage;
+import com.techne.boot.pojo.bo.RetBO;
+
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+
+/**
+ * 扩展的mybatis-plus service 层接口<br/>
+ * <pre>{@code
+ * // 自定义多表关联分页查询，在mapper层新建一个方法
+ * // 示例：
+ * // @Select("select ${ew.sqlSelect} from tableName t1 left join tableName t2 on t1.t1_id = t2.t1_id ${ew.customSqlSegment}")
+ * TechnePage<T> pageList(TechnePage<T> page, @Param(Constants.WRAPPER) Wrapper<T> queryWrapper);
+ * }
+ * </pre>
+ *
+ * @author 七濑武【Nanase Takeshi】
+ */
+public interface ITechneService<T> extends IService<T> {
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPage(E basicPage) {
+        return this.listPage(basicPage, Collections.emptyList());
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPage(E basicPage, List<SFunction<T, ?>> columns) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     * <p>consumer 一些where条件</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param consumer  item -> item.eq("user_id",1)
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPageQuery(E basicPage, List<SFunction<T, ?>> columns, Consumer<QueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns).func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     * <p>consumer 一些where条件</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param consumer  item -> item.eq(User::getUserId,1)
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPageLambdaQuery(E basicPage, List<SFunction<T, ?>> columns, Consumer<LambdaQueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns).lambda().func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listTechnePage(E basicPage) {
+        return this.listTechnePage(basicPage, Collections.emptyList());
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listTechnePage(E basicPage, List<SFunction<T, ?>> columns) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     * <p>consumer 一些where条件</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param consumer  item -> item.eq("user_id",1)
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listTechnePageQuery(E basicPage, List<SFunction<T, ?>> columns, Consumer<QueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns).func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * <p>通用的列表分页查询接口</p>
+     * <p>columns 示例：User::getUserName</p>
+     * <p>consumer 一些where条件</p>
+     *
+     * @param basicPage 列表查询参数
+     * @param columns   需要进行模糊搜索的数据库字段名
+     * @param consumer  item -> item.eq(User::getUserId,1)
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listTechnePageLambdaQuery(E basicPage, List<SFunction<T, ?>> columns, Consumer<LambdaQueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), this.getBaseMapper().buildQueryWrapper(basicPage, columns).lambda().func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * 示例：userService.listPageQuery([BasicPage类或继承了BasicPage的类], item -> item.eq("user_id",1));
+     *
+     * @param basicPage 列表分页查询参数
+     * @param consumer  item -> item.eq("user_id",1)
+     * @param <E>       e
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPageQuery(E basicPage, Consumer<QueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), new QueryWrapper<T>().func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 扩展的mybatis-plus分页接口
+     * 示例：userService.listPageLambdaQuery([BasicPage类或继承了BasicPage的类], item -> item.eq(User::getUserId,1));
+     *
+     * @param basicPage 列表分页查询参数
+     * @param consumer  item -> item.eq(User::getUserId,1)
+     * @param <E>       p
+     * @return TechnePage
+     */
+    default <E extends BasicPage> TechnePage<T> listPageLambdaQuery(E basicPage, Consumer<LambdaQueryWrapper<T>> consumer) {
+        return this.getBaseMapper().selectPage(TechnePage.of(basicPage), new QueryWrapper<T>().lambda().func(Objects.nonNull(consumer), consumer));
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否已存在
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @return boolean
+     */
+    default boolean columnExists(SFunction<T, ?> column, Object val) {
+        return this.getBaseMapper().columnExists(column, val);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否已存在，已存在时抛出异常
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param retBO  查询的值存在返回的信息对象
+     */
+    default void columnExists(SFunction<T, ?> column, Object val, RetBO retBO) {
+        this.getBaseMapper().columnExists(column, val, retBO);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否已存在，已存在时抛出异常
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param retBO  查询的值存在返回的信息对象
+     * @param args   将为消息中的参数填充的参数数组（参数在消息中类似于“{0}”、“{1,date}”、“{2,time}”），如果没有则为null
+     */
+    default void columnExists(SFunction<T, ?> column, Object val, RetBO retBO, Object... args) {
+        this.getBaseMapper().columnExists(column, val, retBO, args);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否已存在，不包括本身
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param id     主键ID值
+     * @return boolean
+     */
+    default boolean columnExists(SFunction<T, ?> column, Object val, Serializable id) {
+        return this.getBaseMapper().columnExists(column, val, id);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否已存在，不包括本身，已存在时抛出异常
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param id     主键ID值
+     * @param retBO  查询的值存在返回的信息对象
+     * @param args   将为消息中的参数填充的参数数组（参数在消息中类似于“{0}”、“{1,date}”、“{2,time}”），如果没有则为null
+     */
+    default void columnExists(SFunction<T, ?> column, Object val, Serializable id, RetBO retBO, Object... args) {
+        this.getBaseMapper().columnExists(column, val, id, retBO, args);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否不存在
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @return boolean
+     */
+    default boolean columnNotExists(SFunction<T, ?> column, Object val) {
+        return this.getBaseMapper().columnNotExists(column, val);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否不存在，不存在时抛出异常
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param retBO  查询的值不存在返回的信息对象
+     */
+    default void columnNotExists(SFunction<T, ?> column, Object val, RetBO retBO) {
+        this.getBaseMapper().columnNotExists(column, val, retBO);
+    }
+
+    /**
+     * 判断当前实体对象中某个字段值是否不存在，不存在时抛出异常
+     *
+     * @param column 查询的字段
+     * @param val    查询的值
+     * @param retBO  查询的值不存在返回的信息对象
+     * @param args   将为消息中的参数填充的参数数组（参数在消息中类似于“{0}”、“{1,date}”、“{2,time}”），如果没有则为null
+     */
+    default void columnNotExists(SFunction<T, ?> column, Object val, RetBO retBO, Object... args) {
+        this.getBaseMapper().columnNotExists(column, val, retBO, args);
+    }
+
+    /**
+     * 根据 UpdateWrapper 条件，更新记录 需要设置sqlset
+     *
+     * @param updateWrapper 实体对象封装操作类 {@link UpdateWrapper}
+     * @return boolean
+     */
+    @Override
+    default boolean update(Wrapper<T> updateWrapper) {
+        return SqlHelper.retBool(this.getBaseMapper().update(updateWrapper));
+    }
+
+    /**
+     * <p>更新某一个字段的值</p>
+     * <p>例如：更新禁用/启用状态</p>
+     *
+     * @param id     主键ID值
+     * @param column 需要更新的字段
+     * @param val    更新后的值
+     * @return boolean
+     */
+    default boolean updateColumnById(Serializable id, SFunction<T, ?> column, Serializable val) {
+        return this.getBaseMapper().updateColumnById(id, column, val);
+    }
+
+    /**
+     * 根据 entity 条件，查询对象，并转成一个pojo对象，本质上只是替代做了BeanUtil.copyProperties
+     *
+     * @param queryWrapper 实体对象封装操作类
+     * @param clazz        pojo类
+     * @param <E>          E
+     * @return E
+     */
+    default <E> E getOne(Wrapper<T> queryWrapper, Class<E> clazz) {
+        return this.getBaseMapper().selectOne(queryWrapper, clazz);
+    }
+
+    /**
+     * 根据 Wrapper 条件，查询全部记录，本质上只是替代做了类型强制转换
+     * <p>注意： 只返回第一个字段的值</p>
+     *
+     * @param queryWrapper 实体对象封装操作类（可以为 null）
+     * @param clazz        返回的集合中泛型类型
+     * @param <E>          泛型
+     * @return 集合
+     */
+    default <E> List<E> listObjs(Wrapper<T> queryWrapper, Class<E> clazz) {
+        return this.getBaseMapper().selectObjs(queryWrapper, clazz);
+    }
+
+    /**
+     * 根据主键ID查询（不区分是否已逻辑删除）
+     *
+     * @param id id
+     * @return T
+     */
+    default T getIncludeDelById(Serializable id) {
+        return this.getBaseMapper().selectIncludeDelById(id);
+    }
+
+    /**
+     * 根据 entity 条件，查询全部记录（并翻页），传入page时需要指定resultClass，本质上只是替代做了BeanUtil.copyProperties
+     *
+     * @param page         翻页对象
+     * @param queryWrapper 实体对象封装操作类 {@link QueryWrapper}
+     * @param <V>          V
+     * @return TechnePage
+     */
+    default <V> TechnePage<V> listPojoPage(TechnePage<V> page, Wrapper<T> queryWrapper) {
+        return this.getBaseMapper().selectPojoPage(page, queryWrapper);
+    }
+
+    /**
+     * 根据 entity 条件，查询列表，并转成pojo对象列表，本质上只是替代做了BeanUtil.copyProperties
+     *
+     * @param queryWrapper 实体对象封装操作类
+     * @param clazz        返回的集合中泛型类型
+     * @param <E>          E
+     * @return List
+     */
+    default <E> List<E> listPojoList(Wrapper<T> queryWrapper, Class<E> clazz) {
+        return this.getBaseMapper().selectPojoList(queryWrapper, clazz);
+    }
+
+    /**
+     * 获取对应 entity 的 BaseMapper
+     *
+     * @return BaseMapper
+     */
+    @Override
+    TechneMapper<T> getBaseMapper();
+
+}

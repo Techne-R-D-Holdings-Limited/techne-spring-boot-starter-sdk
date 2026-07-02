@@ -1,0 +1,26 @@
+package com.techne.boot.gson;
+
+import com.google.gson.*;
+import com.techne.boot.constants.TechneDatePattern;
+
+import java.lang.reflect.Type;
+import java.time.LocalTime;
+
+/**
+ * LocalTimeTypeAdapter
+ *
+ * @author 七濑武【Nanase Takeshi】
+ */
+public class LocalTimeTypeAdapter implements JsonSerializer<LocalTime>, JsonDeserializer<LocalTime> {
+
+    @Override
+    public JsonElement serialize(LocalTime localTime, Type type, JsonSerializationContext jsonSerializationContext) {
+        return new JsonPrimitive(localTime.format(TechneDatePattern.NORM_TIME_FORMATTER));
+    }
+
+    @Override
+    public LocalTime deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+        return LocalTime.parse(jsonElement.getAsString());
+    }
+
+}

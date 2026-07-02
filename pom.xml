@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.techne.boot</groupId>
+    <artifactId>techne-spring-boot-starter</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>techne-spring-boot-starter</name>
+    <description>一个集成了各种库的、可以快速构建 SpringBoot 项目框架的库 / A Spring Boot starter that integrates many common libraries to bootstrap projects quickly</description>
+    <!-- TODO: 替换为 techne 项目实际的仓库地址 / replace with the real techne repository URL -->
+    <url>https://github.com/techne/techne-spring-boot-starter</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <!-- TODO: 替换为实际开发者姓名 / replace with the real developer name -->
+            <name>techne</name>
+            <email>kzerain.kong@kekaokaifa.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <!-- TODO: 替换为 techne 项目实际的 SCM 地址 / replace with the real techne SCM URLs -->
+        <connection>scm:git:git://github.com/techne/techne-spring-boot-starter.git</connection>
+        <developerConnection>scm:git:ssh://github.com/techne/techne-spring-boot-starter.git</developerConnection>
+        <url>https://github.com/techne/techne-spring-boot-starter</url>
+    </scm>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- 框架版本 / framework versions -->
+        <spring-boot.version>3.4.0</spring-boot.version>
+
+        <!-- 依赖版本（与 build.gradle 的 ext 块一一对应） / dependency versions mirrored from build.gradle ext -->
+        <redisson.version>3.40.0</redisson.version>
+        <tika.version>3.0.0</tika.version>
+        <jts.version>1.20.0</jts.version>
+        <ffmpeg.version>7.1-1.5.11</ffmpeg.version>
+        <javacv.version>1.5.11</javacv.version>
+        <mybatis-plus.version>3.5.12</mybatis-plus.version>
+        <springdoc.version>2.7.0</springdoc.version>
+        <aws.version>2.29.23</aws.version>
+        <lutung.version>0.0.8</lutung.version>
+        <firebase.version>9.4.2</firebase.version>
+        <findbugs.version>3.0.1u2</findbugs.version>
+        <gson.version>2.12.1</gson.version>
+        <libphonenumber.version>8.13.51</libphonenumber.version>
+        <html2pdf.version>6.0.0</html2pdf.version>
+        <hutool.version>5.8.38</hutool.version>
+        <sa-token.version>1.42.0</sa-token.version>
+        <!-- thymeleaf 要使用的 ognl，版本要相互对应 / ognl version must match thymeleaf -->
+        <ognl.version>3.3.5</ognl.version>
+        <jaxb-api.version>2.3.1</jaxb-api.version>
+        <twilio.version>10.6.3</twilio.version>
+        <mica-auto.version>3.1.4</mica-auto.version>
+        <knife4j.version>4.5.0</knife4j.version>
+        <!-- 注解处理器需显式指定版本（由 Spring Boot 3.4.0 BOM 管理的版本） / lombok version managed by Spring Boot 3.4.0 -->
+        <lombok.version>1.18.36</lombok.version>
+        <!-- commons-logging 不在 Spring Boot BOM 管理范围内，需显式指定（仅作占位，实际由 spring-jcl 取代） -->
+        <commons-logging.version>1.3.5</commons-logging.version>
+
+        <!-- 构建插件版本 / build plugin versions -->
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+        <central-publishing-plugin.version>0.7.0</central-publishing-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 取代 gradle 的 io.spring.dependency-management 插件 / replaces io.spring.dependency-management -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- mybatis-plus BOM / com.baomidou:mybatis-plus-bom -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-bom</artifactId>
+                <version>${mybatis-plus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- AWS SDK BOM / software.amazon.awssdk:bom -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- ============ 传递依赖（gradle: api → 默认 compile 作用域） ============ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- 使用 micrometer-tracing-bridge-brave 必须引入 actuator 进行自动装配以注入 Tracer -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+            <version>${redisson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <!-- geoPoint -->
+        <dependency>
+            <groupId>org.locationtech.jts</groupId>
+            <artifactId>jts-core</artifactId>
+            <version>${jts.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>annotations</artifactId>
+            <version>${findbugs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>${libphonenumber.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>${hutool.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redisson-spring-boot-starter</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ognl</groupId>
+            <artifactId>ognl</artifactId>
+            <version>${ognl.version}</version>
+        </dependency>
+        <!-- 使用 S3 时提示需要 jaxb-api，否则会回退到性能较低的 SDK 实现 / required by AWS S3 on Java 9+ -->
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>${jaxb-api.version}</version>
+        </dependency>
+
+        <!-- ============ 可选依赖（gradle: compileOnly → optional=true，不向下游传递） ============ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- javacv 与 ffmpeg-platform / javacv and ffmpeg -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>${ffmpeg.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv</artifactId>
+            <version>${javacv.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>secretsmanager</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3-transfer-manager</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.mandrillapp.wrapper.lutung</groupId>
+            <artifactId>lutung</artifactId>
+            <version>${lutung.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>${firebase.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>html2pdf</artifactId>
+            <version>${html2pdf.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>${twilio.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>${knife4j.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ============ 编译期工具 / compile-time tooling ============ -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- 生成 spring-configuration-metadata.json / generates config metadata -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!--
+            mica-auto 既是注解处理器（见 build 中的 annotationProcessorPaths），
+            其注解 @AutoService / @AutoRunListener 也被源码直接引用，故需在编译类路径可见。
+            CLASS 保留策略、运行期不需要，用 provided。
+            mica-auto's @AutoService/@AutoRunListener are referenced in source, so it must be
+            on the compile classpath (provided), in addition to the annotation processor path.
+        -->
+        <dependency>
+            <groupId>net.dreamlu</groupId>
+            <artifactId>mica-auto</artifactId>
+            <version>${mica-auto.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            commons-logging 排除说明：
+            Spring 使用 spring-jcl 作为日志桥接，commons-logging 会导致日志系统冲突。
+            Gradle 用全局 exclude 处理；Maven 没有全局 exclude，这里以 provided 作用域
+            声明为“占位”，使其不会被本库打包，也不会传递给下游。
+            Spring uses spring-jcl as the logging bridge; declaring commons-logging as
+            provided neutralizes the transitive copy without a global exclude.
+        -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>${commons-logging.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 编译 + 注解处理器（gradle: annotationProcessor lombok / mica-auto / configuration-processor） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>net.dreamlu</groupId>
+                            <artifactId>mica-auto</artifactId>
+                            <version>${mica-auto.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${spring-boot.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- sources jar（gradle: withSourcesJar） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven-source-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- javadoc jar（gradle: withJavadocJar，javadoc UTF-8） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <charset>${project.build.sourceEncoding}</charset>
+                    <docencoding>${project.build.sourceEncoding}</docencoding>
+                    <!-- 关闭 doclint，避免大量中文 javadoc 触发校验失败 / disable doclint -->
+                    <doclint>none</doclint>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+            发布到 Maven Central 的配置（取代 gradle 的 jreleaser + maven-publish）。
+            仅在显式启用 release profile 时执行 GPG 签名与上传，普通构建不受影响。
+            用法 / usage: mvn -Prelease clean deploy
+            前置条件 / prerequisites:
+              - settings.xml 中配置 server id=central 的 Central Portal token
+              - 本机可用的 GPG 私钥（gpg.passphrase 可通过 -Dgpg.passphrase= 传入）
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <!-- GPG 签名 / artifact signing (gradle: jreleaser signing) -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 上传到 Sonatype Central Portal / publish to central.sonatype.com -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- 对应 settings.xml 中的 <server><id>central</id> 凭据 -->
+                            <publishingServerId>central</publishingServerId>
+                            <!-- 自动发布；如需人工在网页确认后再 release，可改为 false -->
+                            <autoPublish>true</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
