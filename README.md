@@ -186,7 +186,7 @@ public class UserController extends AbstractBasicController {
 
 ### 1. 统一响应结构
 
-所有接口统一返回 `ResponseData<T>`（`com.techne.boot.pojo.basic.ResponseData`）：
+所有接口统一返回 `ResponseData<T>`（`basic.pojo.com.technehq.boot.ResponseData`）：
 
 ```json
 {
@@ -256,7 +256,7 @@ throw new TechneException(3001, "user.not.found", new Object[]{userId});
 userOpt.orElseThrow(TechneException.supplier(TechneCode.NOT_EXIST));
 ```
 
-另提供函数式工具 `Either<L, R>`（`com.techne.boot.exception.Either`），用于在 Stream/Lambda 中优雅地处理受检异常。
+另提供函数式工具 `Either<L, R>`（`exception.com.technehq.boot.Either`），用于在 Stream/Lambda 中优雅地处理受检异常。
 
 ### 3. Sa-Token 鉴权与请求拦截
 
@@ -581,7 +581,7 @@ void sendMessage(boolean send, String phoneNumber, String message);
    ```
 3. **`techne.aes-key` 必须 16 位**，否则启动校验失败；不配置则自动按「项目名+环境」派生（同一项目同一环境密钥稳定）。
 4. **本库自带 `logback-spring.xml`**，会接管日志输出（控制台 + 滚动文件）。如需完全自定义日志，在自己项目中提供同名文件覆盖即可。
-5. **`@TechneLog` 需要建表**：异步日志写入 `tb_sys_log`，表结构参照实体 `com.techne.boot.pojo.basic.TbSysLog` 自行创建；不建表则不要使用该注解。
+5. **`@TechneLog` 需要建表**：异步日志写入 `tb_sys_log`，表结构参照实体 `basic.pojo.com.technehq.boot.TbSysLog` 自行创建；不建表则不要使用该注解。
 6. **逻辑删除字段约定**：默认 `deleteTime`（删除时写入 `utc_timestamp(3)`，未删除为 `0`），实体需有对应字段；不适用时在自己的配置中覆盖 `mybatis-plus.global-config.db-config.*`。
 7. **历史署名**：本库由 takeshi 项目迁移而来，类名与配置前缀均已统一为 `techne`，仅部分类的 `@author` 注释仍保留原作者署名。
 8. **改动自动装配注解后必须重新编译**（`mvn clean compile`），`META-INF` 下的装配文件由注解处理器在编译期生成。

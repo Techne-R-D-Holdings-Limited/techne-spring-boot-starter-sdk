@@ -1,0 +1,1142 @@
+package com.technehq.boot.util;
+
+import cn.hutool.core.img.Img;
+import cn.hutool.core.img.ImgUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IoUtil;
+import cn.hutool.core.io.file.FileNameUtil;
+import cn.hutool.core.net.url.UrlBuilder;
+import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.spring.SpringUtil;
+import com.technehq.boot.config.properties.AWSSecretsManagerCredentials;
+import com.technehq.boot.constants.TechneCode;
+import com.technehq.boot.exception.TechneException;
+import com.technehq.boot.pojo.bo.PresignedUploadBO;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.mime.MimeType;
+import org.apache.tika.mime.MimeTypes;
+import org.springframework.web.multipart.MultipartFile;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.http.SdkHttpResponse;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.CompletedFileDownload;
+import software.amazon.awssdk.transfer.s3.model.UploadRequest;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.metadata.IIOMetadata;
+import javax.imageio.metadata.IIOMetadataNode;
+import javax.imageio.stream.ImageInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
+
+/**
+ * AmazonS3Util
+ * <pre>{@code
+ * implementation 'software.amazon.awssdk:s3-transfer-manager:+'
+ * }</pre>
+ *
+ * @author 七濑武【Nanase Takeshi】
+ */
+@Slf4j
+public final class AmazonS3Util {
+
+    /**
+     * 静态内部类
+     */
+    private static class LazyHolder {
+
+        /**
+         * 存储桶名称
+         */
+        private static String bucketName;
+
+        /**
+         * 文件ACL
+         */
+        private static ObjectCannedACL fileAcl;
+
+        /**
+         * 用于异步访问 Amazon S3 的服务客户端
+         */
+        private static S3AsyncClient s3AsyncClient;
+
+        /**
+         * 用于管理到 Amazon S3 的传输的高级实用程序
+         */
+        private static S3TransferManager s3TransferManager;
+
+        /**
+         * 用于管理 Amazon S3 对象签名
+         */
+        private static S3Presigner s3Presigner;
+
+        /**
+         * 是否启用 CDN 加速
+         */
+        private static boolean cdnEnabled;
+
+        /**
+         * CDN 加速域名
+         */
+        private static String cdnUrl;
+
+        static {
+            try {
+                AWSSecretsManagerCredentials credentials = SpringUtil.getBean(AWSSecretsManagerCredentials.class);
+                bucketName = credentials.getBucketName();
+                fileAcl = ObjectCannedACL.fromValue(credentials.getFileAcl().getValue());
+                cdnEnabled = credentials.isCdnEnabled();
+                cdnUrl = credentials.getCdnUrl();
+                s3AsyncClient = SpringUtil.getBean(S3AsyncClient.class);
+                s3TransferManager = SpringUtil.getBean(S3TransferManager.class);
+                s3Presigner = SpringUtil.getBean(S3Presigner.class);
+            } catch (Exception e) {
+                log.error("Error initializing AmazonS3Util.LazyHolder", e);
+            }
+        }
+
+    }
+
+    /**
+     * 获取存储桶名称
+     *
+     * @return 存储桶名称
+     */
+    public static String getBucketName() {
+        return LazyHolder.bucketName;
+    }
+
+    /**
+     * 获取文件ACL
+     *
+     * @return 文件ACL
+     */
+    public static ObjectCannedACL getFileAcl() {
+        return LazyHolder.fileAcl;
+    }
+
+    /**
+     * 获取用于异步访问 Amazon S3 的服务客户端
+     *
+     * @return 用于异步访问 Amazon S3 的服务客户端
+     */
+    public static S3AsyncClient getS3AsyncClient() {
+        return LazyHolder.s3AsyncClient;
+    }
+
+    /**
+     * 获取用于管理到 Amazon S3 的传输的高级实用程序
+     *
+     * @return 用于管理到 Amazon S3 的传输的高级实用程序
+     */
+    public static S3TransferManager getS3TransferManager() {
+        return LazyHolder.s3TransferManager;
+    }
+
+    /**
+     * 获取用于管理 Amazon S3 对象签名
+     *
+     * @return 用于管理 Amazon S3 对象签名
+     */
+    public static S3Presigner getS3Presigner() {
+        return LazyHolder.s3Presigner;
+    }
+
+    /**
+     * 获取是否在配置文件中启用了 CDN 加速
+     * Get whether CDN acceleration is enabled in the configuration file
+     *
+     * @return boolean 配置文件中是否启用了 CDN 加速 / whether CDN acceleration is enabled in the configuration
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    public static boolean isCdnEnabled() {
+        return LazyHolder.cdnEnabled;
+    }
+
+    /**
+     * 获取配置文件中的 CDN 加速域名
+     * Get the CDN acceleration domain configured in the configuration file
+     *
+     * @return String 配置文件中的 CDN 加速域名，未配置则返回null / the configured CDN domain, or null if not configured
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    public static String getCdnUrl() {
+        return LazyHolder.cdnUrl;
+    }
+
+    /**
+     * 预签名URL的有效期
+     */
+    private static final Duration PRESIGNED_URL_DURATION = Duration.ofDays(7);
+
+    /**
+     * 文件对象的访问控制列表 (ACL)
+     */
+    private ObjectCannedACL fileAcl;
+
+    /**
+     * 文件上传后的URL是否附带文件信息
+     */
+    private boolean fileInfoUrl;
+
+    /**
+     * 是否生成缩略图
+     */
+    private boolean thumbnail;
+
+    /**
+     * 是否获取视频时长
+     */
+    private boolean duration;
+
+    /**
+     * 图片质量，数字为0~1（不包括0和1）表示质量压缩比，除此数字外设置表示不压缩
+     */
+    private Float quality;
+
+    /**
+     * 用户自定义元数据
+     */
+    private Map<String, String> userMetadata = new HashMap<>();
+
+    /**
+     * 是否使用 CDN 加速输出文件URL
+     */
+    private boolean useCdn;
+
+    /**
+     * 自定义 CDN 加速域名，为空则使用配置文件中的 cdnUrl
+     */
+    private String cdnUrl;
+
+    /**
+     * 构造函数
+     */
+    private AmazonS3Util() {
+    }
+
+    /**
+     * 获取AmazonS3Util对象
+     *
+     * @return AmazonS3Util
+     */
+    public static AmazonS3Util of() {
+        return new AmazonS3Util();
+    }
+
+    /**
+     * 设置文件对象的访问控制列表 (ACL)
+     *
+     * @param fileAcl ACL
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withCannedAcl(ObjectCannedACL fileAcl) {
+        this.fileAcl = fileAcl;
+        return this;
+    }
+
+    /**
+     * 文件上传后的URL是否附带文件信息
+     *
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withFileInfoUrl() {
+        this.fileInfoUrl = true;
+        return this;
+    }
+
+    /**
+     * 文件上传后的URL是否附带文件信息
+     *
+     * @param fileInfoUrl 是否附带文件信息
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withFileInfoUrl(boolean fileInfoUrl) {
+        this.fileInfoUrl = fileInfoUrl;
+        return this;
+    }
+
+    /**
+     * 是否生成缩略图
+     *
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withThumbnail() {
+        this.thumbnail = true;
+        return this;
+    }
+
+    /**
+     * 是否生成缩略图
+     *
+     * @param thumbnail 是否生成缩略图
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withThumbnail(boolean thumbnail) {
+        this.thumbnail = thumbnail;
+        return this;
+    }
+
+    /**
+     * 是否获取视频时长
+     *
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withDuration() {
+        this.duration = true;
+        return this;
+    }
+
+    /**
+     * 是否获取视频时长
+     *
+     * @param duration 是否获取视频时长
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withDuration(boolean duration) {
+        this.duration = duration;
+        return this;
+    }
+
+    /**
+     * 设置图片质量压缩比
+     *
+     * @param quality 图片质量压缩比
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withQuality(float quality) {
+        this.quality = quality;
+        return this;
+    }
+
+    /**
+     * 设置用户自定义元数据
+     *
+     * @param userMetadata 元数据
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util withUserMetadata(Map<String, String> userMetadata) {
+        this.userMetadata = userMetadata;
+        return this;
+    }
+
+    /**
+     * 添加用户自定义元数据
+     *
+     * @param key   key
+     * @param value value
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util putUserMetadata(String key, String value) {
+        this.userMetadata.put(key, value);
+        return this;
+    }
+
+    /**
+     * 添加用户自定义元数据
+     *
+     * @param map map
+     * @return AmazonS3Util
+     */
+    public AmazonS3Util putUserMetadata(Map<String, String> map) {
+        this.userMetadata.putAll(map);
+        return this;
+    }
+
+    /**
+     * 启用 CDN 加速，上传返回的文件URL将使用配置文件中的 cdnUrl 与文件key拼接
+     * Enable CDN acceleration, the returned file URL will be built from the configured cdnUrl and the file key
+     *
+     * @return AmazonS3Util 当前对象 / current AmazonS3Util instance
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    public AmazonS3Util withCdn() {
+        this.useCdn = true;
+        return this;
+    }
+
+    /**
+     * 启用 CDN 加速并指定自定义 CDN 域名，上传返回的文件URL将使用该域名与文件key拼接
+     * Enable CDN acceleration with a custom CDN domain, the returned file URL will be built from the given domain and the file key
+     *
+     * @param cdnUrl 自定义 CDN 加速域名，例如：https://cdn.example.com / custom CDN domain, e.g. https://cdn.example.com
+     * @return AmazonS3Util 当前对象 / current AmazonS3Util instance
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    public AmazonS3Util withCdn(String cdnUrl) {
+        this.useCdn = true;
+        this.cdnUrl = cdnUrl;
+        return this;
+    }
+
+    /**
+     * 生成前端直传S3的预签名上传信息，使用随机key，默认有效期5分钟
+     * Generate presigned upload information for direct frontend-to-S3 upload, using a random key with a default 5-minute expiration
+     *
+     * @return PresignedUploadBO 预签名上传信息 / the presigned upload information
+     * @author Lil' Doe
+     * 2026/7/2 10:36
+     */
+    public PresignedUploadBO presignPut() {
+        return this.presignPut(StrUtil.EMPTY);
+    }
+
+    /**
+     * 生成前端直传S3的预签名上传信息，默认有效期5分钟
+     * Generate presigned upload information for direct frontend-to-S3 upload, with a default 5-minute expiration
+     *
+     * @param fileName 文件名，例如：test.png / the file name, e.g. test.png
+     * @return PresignedUploadBO 预签名上传信息 / the presigned upload information
+     * @author Lil' Doe
+     * 2026/7/2 10:36
+     */
+    public PresignedUploadBO presignPut(String fileName) {
+        return this.presignPut(fileName, Duration.ofMinutes(5));
+    }
+
+    /**
+     * 生成前端直传S3的预签名上传信息，使用不含原始文件名的随机key，仅指定有效期
+     * Generate presigned upload information for direct frontend-to-S3 upload, using a random key without the original file name and only specifying the expiration
+     *
+     * @param duration 预签名URL的有效期 / the expiration duration of the presigned URL
+     * @return PresignedUploadBO 预签名上传信息 / the presigned upload information
+     * @author Lil' Doe
+     * 2026/7/2 10:57
+     */
+    public PresignedUploadBO presignPut(Duration duration) {
+        return this.presignPut(StrUtil.EMPTY, duration);
+    }
+
+    /**
+     * 生成前端直传S3的预签名上传信息：后端生成预签名URL，前端使用PUT直接上传到S3。会复用链式设置的ACL与元数据，前端必须携带返回的headers，否则上传会因签名不匹配失败
+     * Generate presigned upload information for direct frontend-to-S3 upload: the backend generates a presigned URL and the frontend PUTs the file directly to S3. It reuses the ACL and metadata set on this instance; the frontend must send the returned headers, otherwise the upload will fail due to signature mismatch
+     *
+     * @param fileName 文件名，例如：test.png，为空则使用不含原始文件名的随机key / the file name, e.g. test.png, uses a random key without the original name if blank
+     * @param duration 预签名URL的有效期 / the expiration duration of the presigned URL
+     * @return PresignedUploadBO 预签名上传信息，包含uploadUrl、method、headers、fileUrl、key / the presigned upload information, containing uploadUrl, method, headers, fileUrl and key
+     * @author Lil' Doe
+     * 2026/7/2 10:36
+     */
+    public PresignedUploadBO presignPut(String fileName, Duration duration) {
+        String key = getPutFileObjKey(fileName);
+        PresignedPutObjectRequest presignedRequest = AmazonS3Util.getS3Presigner().presignPutObject(
+                PutObjectPresignRequest.builder()
+                                       .signatureDuration(duration)
+                                       .putObjectRequest(
+                                               PutObjectRequest.builder()
+                                                               .bucket(AmazonS3Util.getBucketName())
+                                                               .key(key)
+                                                               .acl(this.fileAcl)
+                                                               .metadata(this.userMetadata)
+                                                               .build()
+                                       )
+                                       .build()
+        );
+        Map<String, String> headers = new HashMap<>();
+        presignedRequest.signedHeaders().forEach((name, values) -> {
+            // 过滤 host 头，浏览器会自动设置且禁止手动设置
+            if (!"host".equalsIgnoreCase(name)) {
+                headers.put(name, String.join(StrUtil.COMMA, values));
+            }
+        });
+        return PresignedUploadBO.builder()
+                                .uploadUrl(presignedRequest.url().toString())
+                                .method(presignedRequest.httpRequest().method().name())
+                                .headers(headers)
+                                .fileUrl(this.resolveUrl(key).toString())
+                                .key(key)
+                                .build();
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param files 文件列表
+     * @return URL列表
+     */
+    public List<URL> upload(File... files) {
+        return Arrays.stream(files).map(this::upload).toList();
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param fileList 文件列表
+     * @return URL列表
+     */
+    public List<URL> uploadFileList(List<File> fileList) {
+        return fileList.stream().map(this::upload).toList();
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param multipartFiles 文件列表
+     * @return URL列表
+     */
+    public List<URL> upload(MultipartFile... multipartFiles) {
+        return Arrays.stream(multipartFiles).map(this::upload).toList();
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param multipartFileList 文件列表
+     * @return URL列表
+     */
+    public List<URL> uploadMultipartFileList(List<MultipartFile> multipartFileList) {
+        return multipartFileList.stream().map(this::upload).toList();
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param file 文件
+     * @return URL
+     */
+    @SneakyThrows
+    public URL upload(File file) {
+        return this.upload(FileUtil.readBytes(file), file.getName());
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param multipartFile 文件
+     * @return URL
+     */
+    @SneakyThrows
+    public URL upload(MultipartFile multipartFile) {
+        return this.upload(multipartFile.getBytes(), multipartFile.getOriginalFilename());
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param inputStream 文件流
+     * @param fileName    文件名
+     * @return URL
+     */
+    @SneakyThrows
+    public URL upload(InputStream inputStream, String fileName) {
+        return this.upload(IoUtil.readBytes(inputStream), fileName);
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param bytes    文件的字节数组
+     * @param fileName 文件名，例如：test.png
+     * @return URL
+     */
+    @SneakyThrows
+    public URL upload(byte[] bytes, String fileName) {
+        TikaInputStream tikaInputStream = TikaInputStream.get(bytes);
+        try (tikaInputStream) {
+            String mediaType = TechneUtil.getTika().detect(tikaInputStream, fileName);
+            MimeType mimeType = MimeTypes.getDefaultMimeTypes().forName(mediaType);
+            String extension = mimeType.getExtension();
+            if (StrUtil.isBlank(extension)) {
+                throw new TechneException(TechneCode.FILE_TYPE_ERROR);
+            }
+            if (ObjUtil.isNull(this.fileAcl)) {
+                this.fileAcl = AmazonS3Util.getFileAcl();
+            }
+            // 添加用户自定义元数据
+            String mainName = FileNameUtil.mainName(fileName);
+            String fileObjKey = getFileObjKey(mainName, extension);
+            if (mediaType.startsWith("video/") || "image/gif".equals(mediaType)) {
+                if (this.thumbnail || this.duration) {
+                    Map<String, String> map = FrameConverterUtil.saveThumbnail(tikaInputStream, fileObjKey, this.fileAcl, mediaType, this.thumbnail, this.duration);
+                    this.putUserMetadata(map);
+                }
+            } else if (mediaType.startsWith("image/")) {
+                if (this.thumbnail) {
+                    // 保存图片缩略图
+                    byte[] thumbnailBytes = ImgUtil.toBytes(ImgUtil.scale(ImgUtil.toImage(bytes), 200, -1), ImgUtil.IMAGE_TYPE_JPG);
+                    String thumbnailObjKey = getThumbnailObjKey(fileObjKey);
+                    // 添加缩略图的S3 key
+                    this.putUserMetadata(MetadataConstants.THUMBNAIL, thumbnailObjKey);
+                    AmazonS3Util.getS3TransferManager().upload(
+                            UploadRequest.builder()
+                                         .requestBody(
+                                                 AsyncRequestBody.fromBytes(thumbnailBytes)
+                                         )
+                                         .putObjectRequest(
+                                                 PutObjectRequest.builder()
+                                                                 .bucket(AmazonS3Util.getBucketName())
+                                                                 .key(thumbnailObjKey)
+                                                                 .contentType("image/jpg")
+                                                                 .contentLength((long) thumbnailBytes.length)
+                                                                 .acl(this.fileAcl)
+                                                                 .build()
+                                         )
+                                         .build()
+
+                    );
+                }
+                if (ObjUtil.isNotNull(this.quality)) {
+                    // 压缩图片
+                    bytes = ImgUtil.toBytes(Img.from(ImgUtil.toImage(bytes)).setQuality(this.quality).getImg(), ImgUtil.IMAGE_TYPE_JPG);
+                }
+            }
+            long contentLength = bytes.length;
+            // TransferManager 异步处理所有传输,所以这个调用立即返回
+            return AmazonS3Util.getS3TransferManager().upload(
+                                       UploadRequest.builder()
+                                                    .requestBody(AsyncRequestBody.fromBytes(bytes))
+                                                    .putObjectRequest(
+                                                            PutObjectRequest.builder()
+                                                                            .bucket(AmazonS3Util.getBucketName())
+                                                                            .key(fileObjKey)
+                                                                            .metadata(this.userMetadata)
+                                                                            .contentType(mediaType)
+                                                                            .contentLength(contentLength)
+                                                                            .acl(this.fileAcl)
+                                                                            .build()
+                                                    )
+                                                    .build()
+                               )
+                               .completionFuture()
+                               .thenApply(completedUpload -> {
+                                              URL url = this.resolveUrl(fileObjKey);
+                                              if (this.fileInfoUrl) {
+                                                  // 此处编码格式传null，目的是为了避免对原始URL反编码，导致访问的URL不正确
+                                                  UrlBuilder urlBuilder = UrlBuilder.of(url.toString(), null);
+                                                  urlBuilder.addQuery(UrlParamsConstants.CONTENT_LENGTH, contentLength);
+                                                  urlBuilder.addQuery(UrlParamsConstants.CONTENT_TYPE, mediaType);
+                                                  String videoDuration = userMetadata.get(MetadataConstants.DURATION);
+                                                  if (StrUtil.isNotBlank(videoDuration)) {
+                                                      urlBuilder.addQuery(UrlParamsConstants.DURATION, videoDuration);
+                                                  }
+                                                  String thumbnail = userMetadata.get(MetadataConstants.THUMBNAIL);
+                                                  if (StrUtil.isNotBlank(thumbnail)) {
+                                                      urlBuilder.addQuery(UrlParamsConstants.THUMBNAIL, thumbnail);
+                                                  }
+                                                  return urlBuilder.toURL();
+                                              }
+                                              return url;
+                                          }
+                               )
+                               .join();
+
+        }
+    }
+
+    /**
+     * 获取文件访问URL
+     *
+     * @param key S3对象的键
+     * @return URL
+     */
+    public static URL getUrl(String key) {
+        return AmazonS3Util.getS3AsyncClient().utilities().getUrl(builder -> builder.bucket(AmazonS3Util.getBucketName()).key(key).build());
+    }
+
+    /**
+     * 根据当前实例的 CDN 配置解析文件访问URL：若启用CDN则返回 cdnUrl/{key} 形式的URL，否则返回原始S3 URL
+     * Resolve the file access URL according to the current instance CDN configuration: return a cdnUrl/{key} style URL if CDN is enabled, otherwise return the original S3 URL
+     *
+     * @param key S3对象的键 / the S3 object key
+     * @return URL 解析后的文件访问URL / the resolved file access URL
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    private URL resolveUrl(String key) {
+        if (this.useCdn || AmazonS3Util.isCdnEnabled()) {
+            String effectiveCdnUrl = StrUtil.isNotBlank(this.cdnUrl) ? this.cdnUrl : AmazonS3Util.getCdnUrl();
+            return getCdnUrl(key, effectiveCdnUrl);
+        }
+        return getUrl(key);
+    }
+
+    /**
+     * 使用配置文件中的 CDN 域名获取文件的 CDN 访问URL，格式为 cdnUrl/{key}
+     * Get the CDN access URL of a file using the CDN domain from the configuration, in the format cdnUrl/{key}
+     *
+     * @param key S3对象的键 / the S3 object key
+     * @return URL CDN访问URL / the CDN access URL
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    public static URL getCdnUrl(String key) {
+        return getCdnUrl(key, AmazonS3Util.getCdnUrl());
+    }
+
+    /**
+     * 使用指定的 CDN 域名获取文件的 CDN 访问URL，格式为 cdnUrl/{key}；若cdnUrl为空则抛出异常
+     * Get the CDN access URL of a file using the given CDN domain, in the format cdnUrl/{key}; throws an exception if cdnUrl is blank
+     *
+     * @param key    S3对象的键 / the S3 object key
+     * @param cdnUrl CDN 加速域名，例如：https://cdn.example.com / the CDN domain, e.g. https://cdn.example.com
+     * @return URL CDN访问URL / the CDN access URL
+     * @author Lil' Doe
+     * 2026/7/2 10:28
+     */
+    @SneakyThrows
+    public static URL getCdnUrl(String key, String cdnUrl) {
+        if (StrUtil.isBlank(cdnUrl)) {
+            throw new TechneException("CDN acceleration is enabled but techne.aws-secrets.cdn-url is not configured");
+        }
+        String base = StrUtil.removeSuffix(cdnUrl.trim(), StrUtil.SLASH);
+        String objKey = StrUtil.removePrefix(key, StrUtil.SLASH);
+        return URI.create(base + StrUtil.SLASH + objKey).toURL();
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL列表，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     * <br/>
+     * 使用随机的key保存文件，不包含原始文件名
+     *
+     * @param size 需要的URL数量
+     * @return URL列表
+     */
+    public static List<URL> getPutPresignedUrl(int size) {
+        return IntStream.of(size).boxed().map(i -> getPutPresignedUrl(StrUtil.EMPTY).url()).toList();
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL列表，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     * <br/>
+     * 使用随机的key保存文件，不包含原始文件名
+     *
+     * @param size     需要的URL数量
+     * @param duration 预签名 URL 将过期的时间
+     * @return URL列表
+     */
+    public static List<URL> getPutPresignedUrl(int size, Duration duration) {
+        return IntStream.of(size).boxed().map(i -> getPutPresignedUrl(StrUtil.EMPTY, duration).url()).toList();
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     * <br/>
+     * 使用随机的key保存文件，不包含原始文件名
+     *
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static PresignedPutObjectRequest getPutPresignedUrl() {
+        return getPutPresignedUrl(StrUtil.EMPTY);
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     *
+     * @param fileName 文件名，例如：test.png
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static PresignedPutObjectRequest getPutPresignedUrl(String fileName) {
+        return getPutPresignedUrl(fileName, Duration.ofMinutes(5));
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     *
+     * @param fileNameList 带后缀的文件名列表
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static List<URL> getPutPresignedUrl(List<String> fileNameList) {
+        return getPutPresignedUrl(fileNameList, Duration.ofMinutes(5));
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     *
+     * @param fileName 文件名，例如：test.png
+     * @param duration 预签名 URL 将过期的时间
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static PresignedPutObjectRequest getPutPresignedUrl(String fileName, Duration duration) {
+        return getPutPresignedUrl(fileName, duration, null);
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     *
+     * @param fileNameList 带后缀的文件名列表
+     * @param duration     预签名 URL 将过期的时间
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static List<URL> getPutPresignedUrl(List<String> fileNameList, Duration duration) {
+        return fileNameList.stream().map(fileName -> getPutPresignedUrl(fileName, duration, null).url()).toList();
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件，默认有效期5分钟
+     *
+     * @param fileName        文件名
+     * @param duration        预签名 URL 将过期的时间
+     * @param objectCannedACL 对象ACL，配置ACL需要存储桶开启ACL，并且PUT上传时需要header里设置`x-amz-acl`值
+     * @return PresignedPutObjectRequest
+     */
+    @SneakyThrows
+    public static PresignedPutObjectRequest getPutPresignedUrl(String fileName, Duration duration, ObjectCannedACL objectCannedACL) {
+        return getPutPresignedUrl(fileName, duration, objectCannedACL, null);
+    }
+
+    /**
+     * 获取一个客户端用来上传文件的预签名 URL，客户端使用 PUT 请求该URL来上传一个二进制文件
+     *
+     * @param fileName        文件名
+     * @param duration        预签名 URL 将过期的时间
+     * @param objectCannedACL 对象ACL，配置ACL需要存储桶开启ACL，并且PUT上传时需要header里设置`x-amz-acl`值
+     * @param metadata        元数据，如果配置了metadata，则PUT上传时需要header里设置`x-amz-meta-`前缀，例如map是{'test-key':'test-value'}，则header里设置`x-amz-meta-test-key`，且值是`test-value`
+     * @return URL
+     */
+    @SneakyThrows
+    public static PresignedPutObjectRequest getPutPresignedUrl(String fileName, Duration duration, ObjectCannedACL objectCannedACL, Map<String, String> metadata) {
+        String key = getPutFileObjKey(fileName);
+        return AmazonS3Util.getS3Presigner().presignPutObject(
+                PutObjectPresignRequest.builder()
+                                       .signatureDuration(duration)
+                                       .putObjectRequest(PutObjectRequest.builder().bucket(AmazonS3Util.getBucketName()).key(key).acl(objectCannedACL).metadata(metadata).build())
+                                       .build()
+        );
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL，默认有效期7天
+     *
+     * @param url S3文件的URL
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(URL url) {
+        return getPresignedUrl(url, PRESIGNED_URL_DURATION);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL
+     *
+     * @param url      S3文件的URL
+     * @param duration 预签名 URL 将过期的时间
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(URL url, Duration duration) {
+        return getPresignedUrl(url, duration, false);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL，默认有效期7天
+     *
+     * @param url         S3文件的URL
+     * @param fileInfoUrl 预签名的URL是否附带文件信息
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(URL url, boolean fileInfoUrl) {
+        return getPresignedUrl(url, PRESIGNED_URL_DURATION, fileInfoUrl);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL
+     *
+     * @param url         S3文件的URL
+     * @param duration    预签名 URL 将过期的时间
+     * @param fileInfoUrl 预签名的URL是否附带文件信息
+     * @return PresignedGetObjectRequest
+     */
+    @SneakyThrows
+    public static PresignedGetObjectRequest getPresignedUrl(URL url, Duration duration, boolean fileInfoUrl) {
+        return getPresignedUrl(AmazonS3Util.getS3AsyncClient().utilities().parseUri(url.toURI()).key().orElseThrow(), duration, fileInfoUrl);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL，默认有效期7天
+     *
+     * @param key S3对象的键
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(String key) {
+        return getPresignedUrl(key, Duration.ofDays(7));
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL
+     *
+     * @param key      S3对象的键
+     * @param duration 预签名 URL 将过期的时间
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(String key, Duration duration) {
+        return getPresignedUrl(key, duration, false);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL，默认有效期7天
+     *
+     * @param key         S3对象的键
+     * @param fileInfoUrl 预签名的URL是否附带文件信息
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(String key, boolean fileInfoUrl) {
+        return getPresignedUrl(key, Duration.ofDays(7), fileInfoUrl);
+    }
+
+    /**
+     * 获取一个用于访问 Amazon S3 资源的预签名 URL
+     *
+     * @param key         S3对象的键
+     * @param duration    预签名 URL 将过期的时间
+     * @param fileInfoUrl 预签名的URL是否附带文件信息
+     * @return PresignedGetObjectRequest
+     */
+    public static PresignedGetObjectRequest getPresignedUrl(String key, Duration duration, boolean fileInfoUrl) {
+        if (StrUtil.isBlank(key)) {
+            return null;
+        }
+        if (fileInfoUrl) {
+            HeadObjectResponse headObjectResponse = Optional.ofNullable(getObject(key)).orElseThrow();
+            Map<String, String> metadata = headObjectResponse.metadata();
+            AwsRequestOverrideConfiguration.Builder awsRequestOverrideConfigurationBuilder = AwsRequestOverrideConfiguration.builder();
+            awsRequestOverrideConfigurationBuilder.putRawQueryParameter(UrlParamsConstants.CONTENT_TYPE, headObjectResponse.contentType());
+            awsRequestOverrideConfigurationBuilder.putRawQueryParameter(UrlParamsConstants.CONTENT_LENGTH, String.valueOf(headObjectResponse.contentLength()));
+            String videoDuration = metadata.get(MetadataConstants.DURATION);
+            if (StrUtil.isNotBlank(videoDuration)) {
+                awsRequestOverrideConfigurationBuilder.putRawQueryParameter(UrlParamsConstants.DURATION, videoDuration);
+            }
+            String thumbnailKey = metadata.get(MetadataConstants.THUMBNAIL);
+            if (StrUtil.isNotBlank(thumbnailKey)) {
+                URL thumbnailUrl = AmazonS3Util.getS3Presigner()
+                                               .presignGetObject(builder ->
+                                                                         builder.signatureDuration(duration)
+                                                                                .getObjectRequest(request ->
+                                                                                                          request.bucket(AmazonS3Util.getBucketName())
+                                                                                                                 .key(thumbnailKey).build()
+                                                                                ).build()
+                                               )
+                                               .url();
+                awsRequestOverrideConfigurationBuilder.putRawQueryParameter(UrlParamsConstants.THUMBNAIL, thumbnailUrl.toString());
+            }
+            GetObjectRequest getObjectRequest =
+                    GetObjectRequest.builder()
+                                    .bucket(AmazonS3Util.getBucketName())
+                                    .key(key)
+                                    .overrideConfiguration(awsRequestOverrideConfigurationBuilder.build())
+                                    .build();
+            GetObjectPresignRequest getObjectPresignRequest =
+                    GetObjectPresignRequest.builder()
+                                           .signatureDuration(duration)
+                                           .getObjectRequest(getObjectRequest)
+                                           .build();
+            return AmazonS3Util.getS3Presigner().presignGetObject(getObjectPresignRequest);
+        }
+        return AmazonS3Util.getS3Presigner().presignGetObject(
+                GetObjectPresignRequest.builder()
+                                       .signatureDuration(duration)
+                                       .getObjectRequest(GetObjectRequest.builder().bucket(AmazonS3Util.getBucketName()).key(key).build())
+                                       .build()
+        );
+    }
+
+    /**
+     * 删除桶
+     *
+     * @param bucketName 桶名称
+     * @return CompletableFuture
+     */
+    public static CompletableFuture<DeleteBucketResponse> deleteBucket(String bucketName) {
+        return AmazonS3Util.getS3AsyncClient().deleteBucket(builder -> builder.bucket(bucketName).build());
+    }
+
+    /**
+     * 根据S3文件的key删除文件
+     *
+     * @param key S3对象的键
+     * @return CompletableFuture
+     */
+    public static CompletableFuture<DeleteObjectResponse> deleteFile(String key) {
+        return AmazonS3Util.getS3AsyncClient().deleteObject(builder -> builder.bucket(AmazonS3Util.getBucketName()).key(key).build());
+    }
+
+    /**
+     * 根据S3文件的key下载到指定目录文件
+     *
+     * @param key     S3对象的键
+     * @param outFile 存储的目录文件
+     * @return CompletableFuture
+     */
+    @SneakyThrows
+    public static CompletableFuture<CompletedFileDownload> download(String key, File outFile) {
+        return AmazonS3Util.getS3TransferManager().downloadFile(builder ->
+                                                                        builder.getObjectRequest(
+                                                                                       GetObjectRequest.builder()
+                                                                                                       .bucket(AmazonS3Util.getBucketName())
+                                                                                                       .key(key)
+                                                                                                       .build()
+                                                                               )
+                                                                               .destination(outFile)
+                                                                               .build()
+        ).completionFuture();
+    }
+
+    /**
+     * 根据key判断文件对象是否存在
+     *
+     * @param key S3对象的键
+     * @return boolean
+     */
+    public static boolean doesObjectExist(String key) {
+        return AmazonS3Util.getS3AsyncClient().headObject(builder -> builder.bucket(AmazonS3Util.getBucketName()).key(key).build())
+                           .thenApply(HeadObjectResponse::sdkHttpResponse)
+                           .thenApply(SdkHttpResponse::isSuccessful)
+                           .exceptionally(throwable -> {
+                               if (throwable.getCause() instanceof NoSuchKeyException) {
+                                   return false;
+                               } else {
+                                   throw new RuntimeException(throwable);
+                               }
+                           })
+                           .join();
+    }
+
+    /**
+     * 从 Amazon S3 检索对象
+     *
+     * @param key S3对象的键
+     * @return S3Object
+     */
+    public static HeadObjectResponse getObject(String key) {
+        return AmazonS3Util.getS3AsyncClient().headObject(builder -> builder.bucket(AmazonS3Util.getBucketName()).key(key).build()).join();
+    }
+
+    private static final DateTimeFormatter PATH_DATE_PATTERN_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd/", Locale.getDefault()).withZone(ZoneId.systemDefault());
+
+    /**
+     * 获取预签名上传文件时存储的完整路径（Key）
+     *
+     * @param fileName 文件名，例如：test.png
+     * @return 完整路径
+     */
+    public static String getPutFileObjKey(String fileName) {
+        String dateFormat = PATH_DATE_PATTERN_FORMATTER.format(Instant.now());
+        String objectId = IdUtil.objectId();
+        if (StrUtil.isBlank(fileName)) {
+            return dateFormat + objectId;
+        }
+        return StrUtil.builder(dateFormat, objectId, StrUtil.SLASH, fileName).toString();
+    }
+
+    /**
+     * 获取文件存储的完整路径（Key）
+     *
+     * @param mainName  主文件名，例如：test
+     * @param extension 扩展名，例如：.png
+     * @return 完整路径
+     */
+    public static String getFileObjKey(String mainName, String extension) {
+        String dateFormat = PATH_DATE_PATTERN_FORMATTER.format(Instant.now());
+        String objectId = IdUtil.objectId();
+        String fileName = mainName + extension;
+        return StrUtil.builder(dateFormat, objectId, StrUtil.SLASH, fileName).toString();
+    }
+
+    /**
+     * 获取缩略图文件存储的完整路径（Key）
+     *
+     * @param originalFileKey 原始文件的key
+     * @return 完整路径
+     */
+    public static String getThumbnailObjKey(String originalFileKey) {
+        return Paths.get(originalFileKey).getParent().resolve("thumbnail.jpg").toString();
+    }
+
+    /**
+     * 获取GIF图像的时长（毫秒），不适用所有GIF图
+     *
+     * @param file 文件
+     * @return int
+     */
+    @SneakyThrows
+    public static int getGifDuration(File file) {
+        // 获取GIF图像的时长（毫秒）
+        int duration = 0;
+        ImageInputStream imageInputStream = ImageIO.createImageInputStream(file);
+        ImageReader reader = ImageIO.getImageReadersByFormatName("gif").next();
+        reader.setInput(imageInputStream);
+        for (int i = 0; i < reader.getNumImages(true); i++) {
+            IIOMetadata metadata = reader.getImageMetadata(i);
+            String metaFormat = metadata.getNativeMetadataFormatName();
+            Node tree = metadata.getAsTree(metaFormat);
+            if (tree instanceof IIOMetadataNode rootNode) {
+                NodeList delayNodes = rootNode.getElementsByTagName("GraphicControlExtension");
+                if (delayNodes.getLength() > 0) {
+                    IIOMetadataNode graphicControlNode = (IIOMetadataNode) delayNodes.item(0);
+                    int delayTime = Integer.parseInt(graphicControlNode.getAttribute("delayTime"));
+                    duration += delayTime * 10;
+                } else {
+                    System.err.println("No GraphicControlExtension node found in frame " + i);
+                }
+            } else {
+                System.err.println("Unsupported metadata format: " + metaFormat);
+                break;
+            }
+        }
+        return duration;
+    }
+
+    /**
+     * 保存到metadata中的数据的key
+     */
+    interface MetadataConstants {
+
+        // 缩略图URL
+        String THUMBNAIL = "nt-thumbnail";
+
+        // 视频时长，单位（毫秒）
+        String DURATION = "nt-duration";
+
+    }
+
+    /**
+     * 文件URL中的参数名
+     */
+    interface UrlParamsConstants {
+
+        // 文件大小，单位（字节）
+        String CONTENT_LENGTH = "content-length";
+
+        // 内容类型
+        String CONTENT_TYPE = "content-type";
+
+        // 缩略图URL
+        String THUMBNAIL = "thumbnail";
+
+        // 视频时长，单位（毫秒）
+        String DURATION = "duration";
+
+    }
+
+}
