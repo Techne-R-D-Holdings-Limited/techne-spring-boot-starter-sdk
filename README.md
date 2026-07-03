@@ -2,7 +2,7 @@
 
 `techne-spring-boot-starter` 是一个基于 **Spring Boot 3** 的自动装配 starter 库（非可运行应用），集成了鉴权、限流、统一响应、全局异常、MyBatis-Plus、Redis 缓存、接口文档、国际化、短信、对象存储等一批企业级开发常用能力，引入后即可快速搭建项目骨架。
 
-> 历史说明：本库由 takeshi 项目迁移而来，根包、类名、配置前缀均已统一为 `techne` / `com.techne.boot`；部分类的 `@author` 仍保留原作者署名。
+> 历史说明：本库由 takeshi 项目迁移而来，根包、类名、配置前缀均已统一为 `techne` / `com.technehq.boot`；部分类的 `@author` 仍保留原作者署名。
 
 ---
 
@@ -47,7 +47,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.techne.boot</groupId>
+    <groupId>com.technehq.boot</groupId>
     <artifactId>techne-spring-boot-starter</artifactId>
     <version>1.0-SNAPSHOT</version>
 </dependency>
@@ -376,7 +376,7 @@ public ResponseData<TokenVO> login(@RequestBody LoginDTO dto) { ... }
 
 ### 7. 参数校验注解
 
-位于 `com.techne.boot.constraints`，配合 `@Validated` 使用，消息默认走 i18n：
+位于 `com.technehq.boot.constraints`，配合 `@Validated` 使用，消息默认走 i18n：
 
 | 注解 | 功能 | 示例 |
 |------|------|------|
@@ -391,7 +391,7 @@ public ResponseData<TokenVO> login(@RequestBody LoginDTO dto) { ... }
 
 ### 8. 字段序列化注解
 
-位于 `com.techne.boot.annotation`，同时支持 JSON Body（Jackson）与 URL/表单参数（FormatterFactory，已由 `TechneSaTokenConfig` 自动注册）：
+位于 `com.technehq.boot.annotation`，同时支持 JSON Body（Jackson）与 URL/表单参数（FormatterFactory，已由 `TechneSaTokenConfig` 自动注册）：
 
 | 注解 | 功能 |
 |------|------|
@@ -452,7 +452,7 @@ public ResponseData<TechnePage<UserVO>> page(@Validated BasicSortQueryPage query
 }
 ```
 
-**内置 TypeHandler**（`com.techne.boot.mybatisplus.typehandler`，使用时实体需 `@TableName(autoResultMap = true)`）：
+**内置 TypeHandler**（`com.technehq.boot.mybatisplus.typehandler`，使用时实体需 `@TableName(autoResultMap = true)`）：
 
 | TypeHandler | Java 类型 ↔ 数据库 | 说明 |
 |-------------|---------------------|------|
@@ -494,7 +494,7 @@ void sendMessage(boolean send, String phoneNumber, String message);
 
 ### 12. 工具类
 
-位于 `com.techne.boot.util`，全部为静态方法风格。标 ⚠ 的依赖可选库，**需下游自行引入对应依赖**：
+位于 `com.technehq.boot.util`，全部为静态方法风格。标 ⚠ 的依赖可选库，**需下游自行引入对应依赖**：
 
 | 工具类 | 功能 | 依赖 |
 |--------|------|------|

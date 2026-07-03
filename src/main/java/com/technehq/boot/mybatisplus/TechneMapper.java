@@ -15,7 +15,7 @@ import com.baomidou.mybatisplus.core.toolkit.*;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
 import com.technehq.boot.exception.TechneException;
-import com.techne.boot.pojo.basic.*;
+import com.technehq.boot.pojo.basic.*;
 import com.technehq.boot.pojo.basic.*;
 import com.technehq.boot.pojo.bo.RetBO;
 import com.technehq.boot.util.TechneUtil;

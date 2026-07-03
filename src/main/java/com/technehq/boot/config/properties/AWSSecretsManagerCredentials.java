@@ -36,7 +36,7 @@ public class AWSSecretsManagerCredentials {
     /**
      * 存储桶名称，默认使用${techne.project-name}-bucket
      */
-    @Value("${techne.aws-secrets.bucket-name:#{T(com.techne.boot.config.properties.AWSSecretsManagerCredentials).formatBucketName('${techne.project-name:}')}}")
+    @Value("${techne.aws-secrets.bucket-name:#{T(com.technehq.boot.config.properties.AWSSecretsManagerCredentials).formatBucketName('${techne.project-name:}')}}")
     private String bucketName;
 
     /**

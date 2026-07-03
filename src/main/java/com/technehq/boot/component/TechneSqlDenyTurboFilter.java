@@ -43,7 +43,7 @@ public class TechneSqlDenyTurboFilter extends TurboFilter {
     private static final List<String> DEFAULT_DENY_PREFIXES = List.of(
             "org.apache.ibatis",
             "com.baomidou.mybatisplus",
-            "com.techne.boot.mybatisplus",
+            "com.technehq.boot.mybatisplus",
             "com.alibaba.druid",
             "druid.sql",
             "com.mysql.cj",

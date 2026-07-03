@@ -3,7 +3,7 @@ package com.technehq.boot.config.satoken;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.technehq.boot.constants.TechneConstants;
-import com.techne.boot.jackson.*;
+import com.technehq.boot.jackson.*;
 import com.technehq.boot.jackson.*;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;

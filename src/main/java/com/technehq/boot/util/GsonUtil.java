@@ -5,7 +5,7 @@ import cn.hutool.core.lang.Singleton;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.technehq.boot.constants.TechneDatePattern;
-import com.techne.boot.gson.*;
+import com.technehq.boot.gson.*;
 import com.technehq.boot.gson.*;
 
 import java.lang.reflect.Type;

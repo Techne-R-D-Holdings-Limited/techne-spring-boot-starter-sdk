@@ -26,32 +26,32 @@ public class MybatisPlusConfig {
     /**
      * CiphertextTypeHandler的typeHandler路径
      */
-    public static final String MAPPING_CIPHERTEXT_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.AesCiphertextTypeHandler";
+    public static final String MAPPING_CIPHERTEXT_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.AesCiphertextTypeHandler";
 
     /**
      * GeoPointTypeHandler的typeHandler路径
      */
-    public static final String MAPPING_GEO_POINT_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.GeoPointTypeHandler";
+    public static final String MAPPING_GEO_POINT_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.GeoPointTypeHandler";
 
     /**
      * Ipv4TypeHandler的typeHandler路径
      */
-    public static final String MAPPING_IPV4_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.Ipv4TypeHandler";
+    public static final String MAPPING_IPV4_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.Ipv4TypeHandler";
 
     /**
      * PasswordTypeHandler的typeHandler路径
      */
-    public static final String MAPPING_PASSWORD_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.PasswordTypeHandler";
+    public static final String MAPPING_PASSWORD_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.PasswordTypeHandler";
 
     /**
      * ZonedDateTimeTypeHandler的typeHandler路径
      */
-    public static final String MAPPING_ZONED_DATE_TIME_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.TechneZonedDateTimeTypeHandler";
+    public static final String MAPPING_ZONED_DATE_TIME_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.TechneZonedDateTimeTypeHandler";
 
     /**
      * AmazonS3TypeHandler的typeHandler路径
      */
-    public static final String MAPPING_AMAZON_S3_TYPE_HANDLER = "typeHandler=com.techne.boot.mybatisplus.typehandler.AmazonS3TypeHandler";
+    public static final String MAPPING_AMAZON_S3_TYPE_HANDLER = "typeHandler=com.technehq.boot.mybatisplus.typehandler.AmazonS3TypeHandler";
 
     /**
      * 新的分页插件,一缓和二缓遵循mybatis的规则,需要设置 MybatisConfiguration useDeprecatedExecutor = false 避免缓存出现问题
