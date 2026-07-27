@@ -331,7 +331,9 @@ RSA 密钥对在应用首次启动时生成并存入 Redis（分布式锁保证�
 
 #### AES
 
-`StaticConfig` 启动时初始化全局 AES 实例（密钥取 `techne.aes-key`，未配置则自动派生），业务代码与 `AesCiphertextTypeHandler` / `PasswordTypeHandler`（数据库字段加密）共用。
+`StaticConfig` 启动时初始化全局 AES 实例（密钥取 `techne.aes-key`，未配置则自动派生），业务代码与 `AesCiphertextTypeHandler`（其他敏感字段加密，加密存、解密读）共用。
+
+> **密码不使用 AES。** `PasswordTypeHandler` 已改为 BCrypt 单向加盐哈希（见 `PasswordUtil`），不可逆；登录校验请调用 `PasswordUtil.matches(明文, 存储值)`，切勿直接比较明文或对存储值解密。密码列建议 `VARCHAR(60)` 以上。
 
 ### 5. 防重复提交与 IP 限流
 
@@ -460,7 +462,7 @@ public ResponseData<TechnePage<UserVO>> page(@Validated BasicSortQueryPage query
 | `GeoPointTypeHandler` | `GeoPointBO` ↔ GEOMETRY/POINT | 已自动注册，WKB 经纬度 |
 | `LocaleTypeHandler` / `ZoneIdTypeHandler` | `Locale`/`ZoneId` ↔ VARCHAR | 已自动注册 |
 | `AesCiphertextTypeHandler` | String ↔ VARCHAR | AES 加密存、解密读 |
-| `PasswordTypeHandler` | String ↔ VARCHAR | 仅加密存（密码） |
+| `PasswordTypeHandler` | String ↔ VARCHAR | BCrypt 单向哈希存（密码，不可逆） |
 | `InetAddressTypeHandler` | String ↔ BINARY | IP 存字节数组 |
 | `AmazonS3TypeHandler` | String ↔ VARCHAR | 存 S3 key，读出自动转预签名 URL |
 | `String/Integer/LongAbstractListTypeHandler` | `List<T>` ↔ VARCHAR | 逗号分隔字符串 |
