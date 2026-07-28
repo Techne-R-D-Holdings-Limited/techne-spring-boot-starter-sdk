@@ -170,6 +170,16 @@ public interface TechneCode {
     RetBO SIGN_ERROR = new RetBO(4001, "signError.message");
 
     /**
+     * 会话密钥无效（RSA 公钥轮换后，客户端仍使用旧公钥加密的 sessionKey）
+     */
+    RetBO SESSION_KEY_INVALID = new RetBO(4007, "sessionKeyInvalid.message");
+
+    /**
+     * 约定 token 校验失败（RSA 解密后的 token 与约定字符串不一致）
+     */
+    RetBO TOKEN_INVALID = new RetBO(4008, "tokenInvalid.message");
+
+    /**
      * 非正常客户端请求
      */
     RetBO USERAGENT_ERROR = new RetBO(4002, "useragentError.message");
