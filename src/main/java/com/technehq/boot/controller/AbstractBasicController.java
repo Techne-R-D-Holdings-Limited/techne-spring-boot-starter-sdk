@@ -1,6 +1,8 @@
 package com.technehq.boot.controller;
 
+import com.technehq.boot.pojo.basic.PageResult;
 import com.technehq.boot.pojo.basic.ResponseData;
+import com.technehq.boot.pojo.basic.TechnePage;
 import com.technehq.boot.pojo.bo.RetBO;
 
 /**
@@ -243,6 +245,17 @@ public abstract class AbstractBasicController {
      */
     private static <T> ResponseData<T> retExist(boolean flag, Object... args) {
         return ResponseData.retExist(flag, args);
+    }
+
+    /**
+     * 返回标准分页出参
+     *
+     * @param page 分页对象
+     * @param <T>  T
+     * @return {@link ResponseData}
+     */
+    protected static <T> ResponseData<PageResult<T>> page(TechnePage<T> page) {
+        return ResponseData.page(page);
     }
 
 }
