@@ -3,6 +3,8 @@ package com.technehq.boot.pojo.basic;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.technehq.boot.constants.RequestConstants;
 import com.technehq.boot.constants.TechneCode;
+import com.technehq.boot.pojo.basic.PageResult;
+import com.technehq.boot.pojo.basic.TechnePage;
 import com.technehq.boot.pojo.bo.RetBO;
 import com.technehq.boot.util.TechneUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -433,6 +435,19 @@ public class ResponseData<T> implements Serializable {
      */
     public static <T> ResponseData<T> instance(int code, String message, T data) {
         return new ResponseData<T>().setCode(code).setMessage(message).setData(data);
+    }
+
+    /**
+     * 返回标准分页出参
+     * <p>将 MyBatis-Plus 分页对象转换为 {@link PageResult}，屏蔽内部字段，
+     * 与前端约定（pageNum / pageSize / total / pages / hasNext）对齐。</p>
+     *
+     * @param page 分页对象
+     * @param <T>  数据类型
+     * @return {@link ResponseData} 包裹的标准分页出参
+     */
+    public static <T> ResponseData<PageResult<T>> page(TechnePage<T> page) {
+        return retData(PageResult.of(page));
     }
 
 }
