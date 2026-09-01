@@ -254,10 +254,21 @@ public class TechneSaSignTemplate extends SaSignTemplate {
             JsonNode jsonNode = objectMapper.readTree(cachedBodyHttpServletRequest.getInputStream());
             if (!jsonNode.isNull()) {
                 if (jsonNode.isObject()) {
-                    Map<String, String> map = objectMapper.convertValue(jsonNode, new TypeReference<>() {
+                    Map<String, Object> map = objectMapper.convertValue(jsonNode, new TypeReference<Map<String, Object>>() {
                     });
                     if (CollUtil.isNotEmpty(map)) {
-                        paramMap.putAll(map);
+                        // 对 Object 和 Array 类型的值进行序列化处理
+                        for (Map.Entry<String, Object> entry : map.entrySet()) {
+                            Object value = entry.getValue();
+                            if (value == null) {
+                                paramMap.put(entry.getKey(), null);
+                            } else if (value instanceof String) {
+                                paramMap.put(entry.getKey(), (String) value);
+                            } else {
+                                // 对于非字符串类型（Object/Array）进行 JSON 序列化
+                                paramMap.put(entry.getKey(), objectMapper.writeValueAsString(value));
+                            }
+                        }
                     }
                 } else {
                     paramMap.put(BODY, objectMapper.writeValueAsString(jsonNode));
@@ -282,11 +293,19 @@ public class TechneSaSignTemplate extends SaSignTemplate {
             JsonNode jsonNode = objectMapper.readTree(cachedBodyHttpServletRequest.getInputStream());
             if (!jsonNode.isNull()) {
                 if (jsonNode.isObject()) {
-                    Map<String, String> map = objectMapper.convertValue(jsonNode, new TypeReference<>() {
+                    Map<String, Object> map = objectMapper.convertValue(jsonNode, new TypeReference<Map<String, Object>>() {
                     });
                     if (CollUtil.isNotEmpty(map)) {
                         for (String paramName : paramNames) {
-                            paramMap.put(paramName, map.get(paramName));
+                            Object value = map.get(paramName);
+                            if (value == null) {
+                                paramMap.put(paramName, null);
+                            } else if (value instanceof String) {
+                                paramMap.put(paramName, (String) value);
+                            } else {
+                                // 对于非字符串类型（Object/Array）进行 JSON 序列化
+                                paramMap.put(paramName, objectMapper.writeValueAsString(value));
+                            }
                         }
                     }
                 } else {
